@@ -92,7 +92,8 @@ services:
       retries: 5
 
   oai-gnb:
-    image: ${REGISTRY:-oaisoftwarealliance}/${GNB_IMG:-oai-gnb}:${TAG:-develop}
+    # image: ${REGISTRY:-oaisoftwarealliance}/${GNB_IMG:-oai-gnb}:${TAG:-develop}
+    image: oai-gnb:local
     container_name: gnb
     privileged: true
     cap_drop:
@@ -104,15 +105,14 @@ services:
       core: -1 # for core dumps
     environment:
       USE_B2XX: "yes"
-      USE_ADDITIONAL_OPTIONS: --RUs.[0].sdr_addrs serial=31027B3 --telnetsrv --telnetsrv.shrmod ci --continuous-tx --log_config.global_log_options level,nocolor,time,line_num,function
+      USE_ADDITIONAL_OPTIONS: --T_stdout 2 --RUs.[0].sdr_addrs serial=31027B3 --telnetsrv --telnetsrv.shrmod ci --continuous-tx
+      DISPLAY: ${DISPLAY}
     devices:
       - /dev/bus/usb/:/dev/bus/usb/
     volumes:
       - ./config/gnb.sa.band78.fr1.24PRB.usrpb210.conf:/opt/oai-gnb/etc/gnb.conf
-    # for performance reasons, we use host mode: in bridge mode, we have
-    # unacceptable DL TCP performance. However, the whole point of
-    # containerization is to not be in host mode, so update this to macvlan
-    # later.
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - ${HOME}/.Xauthority:/root/.Xauthority:rw
     networks:
       public_net:
         ipv4_address: 192.168.71.140
@@ -148,7 +148,7 @@ services:
       - /dev/net/tun:/dev/net/tun
       - /dev/bus/usb/:/dev/bus/usb/
     volumes:
-      - ../config/nrue.uicc.yaml:/opt/oai-nr-ue/etc/nr-ue.yaml
+      - ./config/nrue.uicc.yaml:/opt/oai-nr-ue/etc/nr-ue.yaml
     # Using host network mode for USRP performance
     networks:
       public_net:
@@ -160,6 +160,23 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+  
+  # t-tracer:
+  #   container_name: t-tracer
+  #   image: oai:tracer
+  #   privileged: true
+  #   command: ./macpdu2wireshark -d ../T_messages.txt -ip 192.168.71.129 -live-ip 192.168.71.140 -live -no-bind
+  #   cap_add:
+  #     - NET_ADMIN
+  #     - NET_RAW
+  #   restart: unless-stopped
+  #   environment:
+  #     - DISPLAY=${DISPLAY}
+  #   volumes:
+  #     - /tmp/.X11-unix:/tmp/.X11-unix:rw
+  #   networks:
+  #     public_net:
+  #       ipv4_address: 192.168.71.141
 
 networks:
   public_net:
